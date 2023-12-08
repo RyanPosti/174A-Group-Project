@@ -17,6 +17,10 @@ export class WeatherHeights extends Scene {
             game_over: new defs.Cube(),
             you_win: new defs.Cube(),
 
+            // Sun and Moon
+            sun: new defs.Subdivision_Sphere(5),
+            moon: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
+
             // Enviornment
             block: new defs.Cube(),
             ground: new defs.Cube(),
@@ -112,6 +116,12 @@ export class WeatherHeights extends Scene {
                 texture: new Texture("assets/you_win.png")
             }),
 
+            // Sun and Moon
+            sun: new Material(new defs.Phong_Shader(),
+                    {ambient: 1, diffusivity: 1, color: hex_color("#ECBD2C")}),
+            moon: new Material(new defs.Phong_Shader(),
+                    {ambient: 0, diffusivity: 1, color: hex_color("#FFFFFF"), specularity: 1}),
+            
             // Environment
             grass: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
@@ -167,6 +177,9 @@ export class WeatherHeights extends Scene {
         }
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 4, 0.1), vec3(0, 0, 0), vec3(0, -1, 0));
+        // Initial Position of the planets
+        this.sun_transform = Mat4.identity().times(Mat4.translation(-20, 0, 0));
+        this.moon_transform = Mat4.identity().times(Mat4.translation(20, 0, 0));
 
         // PC initialization
         this.pc = {
@@ -315,6 +328,30 @@ export class WeatherHeights extends Scene {
         this.new_line();
         this.key_triggered_button("Rotate left", ["j"], () => this.pc.pos = this.pc.pos.times(Mat4.rotation(0.1, 0, 1, 0)));
         this.key_triggered_button("Rotate right", ["l"], () => this.pc.pos = this.pc.pos.times(Mat4.rotation(0.1, 0, -1, 0)));
+
+        // Control of the Times
+        this.new_line;
+        this.key_triggered_button("Sunrise", ["k"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(-20, -15, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(20, 15, 0));
+        });
+        this.new_line;
+        this.key_triggered_button("Noon", ["n"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(0, 20, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(0, -20, 0));
+        });
+        this.new_line;
+        this.key_triggered_button("Sunset", ["e"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(20, 15, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(-20, -15, 0));
+        });
+        this.new_line();
+        this.key_triggered_button("Midnight", ["m"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(0, -20, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(0, 20, 0));
+        });
+        this.new_line();
+        
     }
 
     display(context, program_state) {
@@ -330,8 +367,28 @@ export class WeatherHeights extends Scene {
             Math.PI / 4, context.width / context.height, .1, 1000);
 
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
-        const light_position = vec4(0, 5, 5, 1);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+        
+        // vars
+        var sunSize = 100;
+        var orange = hex_color("#F5B21E");
+        var white = hex_color("#ffffff");
+        var blue = hex_color("0000ff")
+
+        // Lighting
+        //  - the parameters of the Light are: position, color, size
+        program_state.lights = [
+                                new Light(this.sun_transform.times(vec4(0.2, 0.2, 0.2, 0)), orange, 10 ** sunSize),
+                                new Light(this.moon_transform.times(vec4(0.2, 0.2, 0.2, 0)), white, 10 ** sunSize)
+                               ];
+
+        // Sun                   
+        let orbital_speed = 1;
+        this.sun_transform = Mat4.rotation(orbital_speed/-200, 0, 0, 1).times(this.sun_transform);
+        this.shapes.sun.draw(context, program_state, this.sun_transform, this.materials.sun);
+
+        // Moon
+        this.moon_transform = Mat4.rotation(orbital_speed/-200, 0, 0, 1).times(this.moon_transform);
+        this.shapes.moon.draw(context, program_state, this.moon_transform, this.materials.moon);
         
         console.log(this.pc.leg.size);
         if (this.pc.leg.size > 2.5) {
