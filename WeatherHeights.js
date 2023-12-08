@@ -4,18 +4,23 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Axis_Arrows, Textured_Phong, Square,} = defs
+const { Cube, Axis_Arrows, Square, Textured_Phong } = defs;
 
-export class WeatherHeights extends Scene {
-    /**
-     *  **Base_scene** is a Scene that can be added to any display canvas.
-     *  Setup the shapes, materials, camera, and lighting here.
-     */
+export class WeatheringHeights extends Scene {
     constructor() {
-        // constructor(): Scenes begin by populating initial values like the Shapes and Materials 
+        // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
 
+        // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
+            // Enviornment
+            block: new defs.Cube(),
+            ground: new defs.Cube(),
+            rain_drop: new defs.Subdivision_Sphere(4),
+            pc: new defs.Cube(),
+            snowflake: new defs.Subdivision_Sphere(4),
+
+            // Building
             box_1: new Cube(),
             box_2: new Cube(),
             box_3: new Cube(),
@@ -63,19 +68,39 @@ export class WeatherHeights extends Scene {
             sqr_12: new Square(),
             sqr_13: new Square(),
             floor: new Cube(),
-
             axis: new Axis_Arrows(),
-   
-        }
+        };
 
-        console.log(this.shapes.box_1.arrays.texture_coord)
+        this.shapes.ground.arrays.texture_coord.forEach(
+            (v, i, l) => {
+                v[0] = 100 * v[0];
+                v[1] = 100 * v[1];
+            }
+        )
 
+        // *** Materials
         this.materials = {
+            // Environment
+            grass: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1,
+                texture: new Texture("assets/grass.png")
+            }),
+            water: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1,
+                texture: new Texture("assets/rain.jpg")
+            }),
+            test: new Material(new defs.Phong_Shader(),
+                {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
+            snow: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1,
+                texture: new Texture("assets/snow.jpg")
+            }),
+            // Building
             phong: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
-            }),
-            brown: new Material(new Textured_Phong(),{
-                color: hex_color("#b5651d")
             }),
             black: new Material(new Textured_Phong(), {
                 color:hex_color("#000000")
@@ -87,31 +112,166 @@ export class WeatherHeights extends Scene {
             Wood: new Material(new Textured_Phong(), {
                 color: hex_color("#cd7532"),
                 ambient: 0.25, diffusivity: 0.05, specularity: 1,
-                texture: new Texture("assets/wood.png")
+                texture: new Texture("assets/grass.png")
             }),
 
             Gray_Wood:new Material(new Textured_Phong(),{
                 color: hex_color("#808080"),
                 ambient: 0.05, diffusivity: 1, specularity: 1,
-                textures: new Texture("assets/gray_wood.png")
+                textures: new Texture("assets/grass.png")
             }),
             Glass: new Material (new Textured_Phong(), {
                 color: hex_color("#ffffff"),
                 ambient: 0.25, diffusivity: 1, specularity: 1,
-                textures: new Texture("assets/glass.png")
+                textures: new Texture("assets/grass.png")
             }),
             
             Tinted_Glass: new Material (new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 0.1, diffusivity: 1, specularity: 1,
-                textures: new Texture("assets/glass.png")
+                textures: new Texture("assets/grass.png")
             })
+            
         }
 
+        this.initial_camera_location = Mat4.look_at(vec3(0, 100, 1), vec3(0, 0, 0), vec3(0, 1, 0));
 
-        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.pc = {
+            pos: Mat4.identity(),
+        }
+        this.rain = [];
+        for (let i = 0; i < 100; i++) {
+            this.rain.push({
+                time: [0, 0],
+                falling: false,
+                is_puddle: false,
+                pos: [0, 0, 0],
+            });
+            this.rain[i].time[1] += 5 * Math.random();
+        }
+        this.snow = [];
+        for (let i = 0; i < 100; i++) {
+            this.snow.push({
+                time: [0, 0],
+                falling: false,
 
+                pos: [0, 0, 0],
+            });
+            this.snow[i].time[1] += 5 * Math.random();
+        }
+        this.pc = {
+            pos: Mat4.identity().times(Mat4.translation(0, -1.3, 8, 1)).times(Mat4.scale(0.1, 0.1, 0.1)),
+        }
+    }
 
+    PC_Control = class extends defs.Movement_Controls {
+        constructor() {
+            super();
+        }
+        make_control_panel() {
+            // make_control_panel(): Sets up a panel of interactive HTML elements, including
+            // buttons with key bindings for affecting this scene, and live info readouts.
+            this.control_panel.innerHTML += "Click and drag the scene to spin your viewpoint around it.<br>";
+            this.live_string(box => box.textContent = "- Position: " + this.pos[0].toFixed(2) + ", " + this.pos[1].toFixed(2)
+                + ", " + this.pos[2].toFixed(2));
+            this.new_line();
+            // The facing directions are surprisingly affected by the left hand rule:
+            this.live_string(box => box.textContent = "- Facing: " + ((this.z_axis[0] > 0 ? "West " : "East ")
+                + (this.z_axis[1] > 0 ? "Down " : "Up ") + (this.z_axis[2] > 0 ? "North" : "South")));
+            this.new_line();
+            this.new_line();
+
+            this.key_triggered_button("Up", [" "], () => this.thrust[1] = -1, undefined, () => this.thrust[1] = 0);
+            this.key_triggered_button("Forward", ["i"], () => this.thrust[2] = 1, undefined, () => this.thrust[2] = 0);
+            this.new_line();
+            this.key_triggered_button("Left", ["j"], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0);
+            this.key_triggered_button("Back", ["k"], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0);
+            this.key_triggered_button("Right", ["l"], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0);
+            this.new_line();
+            this.key_triggered_button("Down", ["z"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
+
+            const speed_controls = this.control_panel.appendChild(document.createElement("span"));
+            speed_controls.style.margin = "30px";
+            this.key_triggered_button("-", ["o"], () =>
+                this.speed_multiplier /= 1.2, undefined, undefined, undefined, speed_controls);
+            this.live_string(box => {
+                box.textContent = "Speed: " + this.speed_multiplier.toFixed(2)
+            }, speed_controls);
+            this.key_triggered_button("+", ["p"], () =>
+                this.speed_multiplier *= 1.2, undefined, undefined, undefined, speed_controls);
+            this.new_line();
+            this.key_triggered_button("Roll left", [","], () => this.roll = 1, undefined, () => this.roll = 0);
+            this.key_triggered_button("Roll right", ["."], () => this.roll = -1, undefined, () => this.roll = 0);
+            this.new_line();
+            this.key_triggered_button("(Un)freeze mouse look around", ["f"], () => this.look_around_locked ^= 1, "#8B8885");
+            this.new_line();
+            this.key_triggered_button("Go to world origin", ["r"], () => {
+                this.matrix().set_identity(4, 4);
+                this.inverse().set_identity(4, 4)
+            }, "#8B8885");
+            this.new_line();
+
+            this.key_triggered_button("Look at origin from front", ["1"], () => {
+                this.inverse().set(Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0)));
+                this.matrix().set(Mat4.inverse(this.inverse()));
+            }, "#8B8885");
+            this.new_line();
+            this.key_triggered_button("from right", ["2"], () => {
+                this.inverse().set(Mat4.look_at(vec3(10, 0, 0), vec3(0, 0, 0), vec3(0, 1, 0)));
+                this.matrix().set(Mat4.inverse(this.inverse()));
+            }, "#8B8885");
+            this.key_triggered_button("from rear", ["3"], () => {
+                this.inverse().set(Mat4.look_at(vec3(0, 0, -10), vec3(0, 0, 0), vec3(0, 1, 0)));
+                this.matrix().set(Mat4.inverse(this.inverse()));
+            }, "#8B8885");
+            this.key_triggered_button("from left", ["4"], () => {
+                this.inverse().set(Mat4.look_at(vec3(-10, 0, 0), vec3(0, 0, 0), vec3(0, 1, 0)));
+                this.matrix().set(Mat4.inverse(this.inverse()));
+            }, "#8B8885");
+            this.new_line();
+            this.key_triggered_button("Attach to global camera", ["Shift", "R"],
+                () => {
+                    this.will_take_over_graphics_state = true
+                }, "#8B8885");
+            this.new_line();
+        }
+    };
+
+    make_control_panel() {
+        this.key_triggered_button("Move forward", ["w"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(0, 0, -1, 1)));
+        this.key_triggered_button("Move backward", ["s"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(0, 0, 1, 1)));
+        this.new_line();
+        this.key_triggered_button("Move left", ["a"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(-1, 0, 0, 1)));
+        this.key_triggered_button("Move right", ["d"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(1, 0, 0, 1)));
+        this.new_line();
+        this.key_triggered_button("Rotate left", ["j"], () => this.pc.pos = this.pc.pos.times(Mat4.rotation(0.1, 0, 1, 0)));
+        this.key_triggered_button("Rotate right", ["l"], () => this.pc.pos = this.pc.pos.times(Mat4.rotation(0.1, 0, -1, 0)));
+    }
+
+    display(context, program_state) {
+        // display():  Called once per frame of animation.
+        // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
+        if (!context.scratchpad.controls) {
+            this.children.push(context.scratchpad.controls = new this.PC_Control());
+            // Define the global camera and projection matrices, which are stored in program_state.
+            program_state.set_camera(this.initial_camera_location);
+        }
+
+        program_state.projection_transform = Mat4.perspective(
+            Math.PI / 4, context.width / context.height, .1, 1000);
+
+        const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+        const light_position = vec4(0, 5, 5, 1);
+        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+
+        this.draw_building(context, program_state);
+        this.draw_map(context, program_state);
+        this.draw_rain(context, program_state);
+        this.draw_snow(context, program_state);
+        this.draw_pc(context, program_state);
+    }
+
+    draw_building(context, program_state){
         // Cube Positions
 
         this.box_1_transform= Mat4.identity().times(Mat4.scale(1,1.6,3));
@@ -158,7 +318,7 @@ export class WeatherHeights extends Scene {
         this.box_18_transform=this.box_18_transform.times(Mat4.translation(-2,-0.93,-19,0));
         this.box_19_transform=Mat4.identity().times(Mat4.scale(1,0.25,0.2));
         this.box_19_transform=this.box_19_transform.times(Mat4.translation(2,-1,16,0));
-        
+
         this.box_20_transform=Mat4.identity().times(Mat4.scale(0.5,0.1,0.2));
         this.box_20_transform=this.box_20_transform.times(Mat4.translation(-4,1,16,0));
 
@@ -219,9 +379,7 @@ export class WeatherHeights extends Scene {
 
         this.floor_transform=Mat4.identity().times(Mat4.scale(10000,0.1,1000));
         this.floor_transform=this.floor_transform.times(Mat4.translation(0,-15,0,0));
-        
-    }
-    draw_Function(context, program_state){
+
         //Boxes 1-6 Parts of the house
         this.shapes.box_1.draw(context, program_state, this.box_1_transform, this.materials.phong);            
         this.shapes.box_2.draw(context, program_state, this.box_2_transform, this.materials.Wood);
@@ -296,31 +454,83 @@ export class WeatherHeights extends Scene {
         this.shapes.sqr_12.draw(context, program_state, this.sqr_12_transform, this.materials.Tinted_Glass);
         //Window Back Wall Upper Left
         this.shapes.sqr_13.draw(context, program_state, this.sqr_13_transform, this.materials.Tinted_Glass);
-        //Floor
-        this.shapes.floor.draw(context, program_state, this.floor_transform, this.materials.green);
     }
 
+    draw_map(context, program_state) {
+        const grass_transform = Mat4.identity().times(Mat4.translation(0, -1.5, 0)).times(Mat4.scale(40, 0.1, 40));
+        const river_transform = Mat4.identity().times(Mat4.translation(0, -1.51, 0)).times(Mat4.scale(140, 0.1, 140));
+        this.shapes.ground.draw(context, program_state, grass_transform, this.materials.grass);
+        this.shapes.ground.draw(context, program_state, river_transform, this.materials.water);
+    }
 
-    display(context, program_state) {
-        if (!context.scratchpad.controls) {
-            this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
-            // Define the global camera and projection matrices, which are stored in program_state.
+    draw_pc(context, program_state) {
+        this.shapes.pc.draw(context, program_state, this.pc.pos, this.materials.test);
+        let desired = Mat4.inverse(this.pc.pos.times(Mat4.translation(0, 5, 17)).times(Mat4.rotation(0, 0, 1, 0)));
+        program_state.camera_inverse = desired.map((x,i) => Vector.from(program_state.camera_inverse[i]).mix(x, 0.1))
+    }
 
-            program_state.set_camera(Mat4.translation(0, 0, -8));
+    draw_rain(context, program_state, t = program_state.animation_time / 1000) {
+        for (let i = 0; i < this.rain.length; i++) {
+            if (this.rain[i].falling === true) {
+                const d = 100 - 0.5 * 9.8 *  Math.pow(t - this.rain[i].time[0], 2);
+                const rain_transform = Mat4.translation(this.rain[i].pos[0], d, this.rain[i].pos[1]).times(Mat4.scale(0.2, 2, 0.2));
+                this.shapes.rain_drop.draw(context, program_state, rain_transform, this.materials.water);
+                if (d < 0) {
+                    this.rain[i].falling = false;
+                    // Time until rain stops being a puddle
+                    this.rain[i].time[1] = t + 2 + 2 * Math.random();
+                    this.rain[i].is_puddle = true;
+                }
+            }
+            else if (this.rain[i].is_puddle === true) {
+                const rain_transform = Mat4.translation(this.rain[i].pos[0], -1.4, this.rain[i].pos[1]).times(Mat4.scale(1, 0.1, 1));
+                this.shapes.rain_drop.draw(context, program_state, rain_transform, this.materials.water);
+                if (t > this.rain[i].time[1]) {
+                    this.rain[i].is_puddle = false;
+                }
+            }
+            else {
+                if (t >= this.rain[i].time[1]) {
+                    this.rain[i].falling = true;
+                    this.rain[i].time[0] = t;
+                    this.rain[i].pos[0] = 80 * Math.random() - 40;
+                    this.rain[i].pos[1] = 80 * Math.random() - 40;
+                }
+            }
         }
+    }
+    draw_snow(context, program_state, t = program_state.animation_time / 1000) {
+        for (let i = 0; i < this.snow.length; i++) {
+            if (this.snow[i].falling === true) {
+                const d = 100 - 20 * (t - this.snow[i].time[0]);
+                const snow_transform = Mat4.translation(this.snow[i].pos[0], d, this.snow[i].pos[1]).times(Mat4.scale(0.25, 0.5, 0.25));
+                this.shapes.snowflake.draw(context, program_state, snow_transform, this.materials.snow);
+                if (d < 0) {
+                    this.snow[i].falling = false;
+                    // Add delay before respawn
+                    this.snow[i].time[1] = t + 2 + 2 * Math.random();
+                    this.snow[i].is_puddle = true;
+                }
+            }
+            else if (this.snow[i].is_puddle === true) {
+                const snow_transform = Mat4.translation(this.snow[i].pos[0], -1.42, this.snow[i].pos[1]).times(Mat4.scale(1, 0.1, 1));
+                this.shapes.snowflake.draw(context, program_state, snow_transform, this.materials.snow);
+                if (t > this.snow[i].time[1]) {
+                    this.snow[i].is_puddle = false;
+                }
+            }
+            else {
+                if (t >= this.snow[i].time[1]) {
+                    this.snow[i].falling = true;
+                    this.snow[i].time[0] = t;
+                    this.snow[i].pos[0] = 80 * Math.random() - 40;
+                    this.snow[i].pos[1] = 80 * Math.random() - 40;
+                }
+            }
+        }
+    }
+    check_environment_collision() {
 
-        program_state.projection_transform = Mat4.perspective(
-            Math.PI / 4, context.width / context.height, 1, 100);
-        
-        var light_position = vec4(10, 10, 10, 1);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 10000)];
-
-        let t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
-        let model_transform = Mat4.identity();
-
-
-       this.draw_Function(context,program_state);
     }
 }
-
 
