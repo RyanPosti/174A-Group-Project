@@ -6,7 +6,7 @@ const {
 
 const { Cube, Axis_Arrows, Square, Textured_Phong } = defs;
 
-export class WeatheringHeights extends Scene {
+export class WeatherHeights extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
@@ -77,6 +77,18 @@ export class WeatheringHeights extends Scene {
                 v[1] = 100 * v[1];
             }
         )
+        this.shapes.rain_drop.arrays.texture_coord.forEach(
+            (v, i, l) => {
+                v[0] = 5 * v[0];
+                v[1] = 5 * v[1];
+            }
+        )
+        this.shapes.snowflake.arrays.texture_coord.forEach(
+            (v, i, l) => {
+                v[0] = 5 * v[0];
+                v[1] = 5 * v[1];
+            }
+        )
 
         // *** Materials
         this.materials = {
@@ -140,7 +152,7 @@ export class WeatheringHeights extends Scene {
             pos: Mat4.identity(),
         }
         this.rain = [];
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 300; i++) {
             this.rain.push({
                 time: [0, 0],
                 falling: false,
@@ -150,7 +162,7 @@ export class WeatheringHeights extends Scene {
             this.rain[i].time[1] += 5 * Math.random();
         }
         this.snow = [];
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 300; i++) {
             this.snow.push({
                 time: [0, 0],
                 falling: false,
@@ -182,12 +194,12 @@ export class WeatheringHeights extends Scene {
             this.new_line();
 
             this.key_triggered_button("Up", [" "], () => this.thrust[1] = -1, undefined, () => this.thrust[1] = 0);
-            this.key_triggered_button("Forward", ["i"], () => this.thrust[2] = 1, undefined, () => this.thrust[2] = 0);
-            this.new_line();
-            this.key_triggered_button("Left", ["j"], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0);
-            this.key_triggered_button("Back", ["k"], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0);
-            this.key_triggered_button("Right", ["l"], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0);
-            this.new_line();
+            // this.key_triggered_button("Forward", ["i"], () => this.thrust[2] = 1, undefined, () => this.thrust[2] = 0);
+            // this.new_line();
+            // this.key_triggered_button("Left", ["j"], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0);
+            // this.key_triggered_button("Back", ["k"], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0);
+            // this.key_triggered_button("Right", ["l"], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0);
+            // this.new_line();
             this.key_triggered_button("Down", ["z"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
 
             const speed_controls = this.control_panel.appendChild(document.createElement("span"));
@@ -238,11 +250,27 @@ export class WeatheringHeights extends Scene {
     };
 
     make_control_panel() {
-        this.key_triggered_button("Move forward", ["w"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(0, 0, -1, 1)));
-        this.key_triggered_button("Move backward", ["s"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(0, 0, 1, 1)));
+        this.key_triggered_button("Move forward", ["w"], () => {
+            if (!this.is_environment_collision(this.pc.pos.times(Mat4.translation(0, 0, -1, 1)))) {
+                this.pc.pos = this.pc.pos.times(Mat4.translation(0, 0, -1, 1));
+            }
+        });
+        this.key_triggered_button("Move backward", ["s"], () => {
+            if (!this.is_environment_collision(this.pc.pos.times(Mat4.translation(0, 0, 1, 1)))) {
+                this.pc.pos = this.pc.pos.times(Mat4.translation(0, 0, 1, 1));
+            }
+        });
         this.new_line();
-        this.key_triggered_button("Move left", ["a"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(-1, 0, 0, 1)));
-        this.key_triggered_button("Move right", ["d"], () => this.pc.pos = this.pc.pos.times(Mat4.translation(1, 0, 0, 1)));
+        this.key_triggered_button("Move left", ["a"], () => {
+            if (!this.is_environment_collision(this.pc.pos.times(Mat4.translation(-1, 0, 0, 1)))) {
+                this.pc.pos = this.pc.pos.times(Mat4.translation(-1, 0, 0, 1));
+            }
+        });
+        this.key_triggered_button("Move right", ["d"], () => {
+            if (!this.is_environment_collision(this.pc.pos.times(Mat4.translation(1, 0, 0, 1)))) {
+                this.pc.pos = this.pc.pos.times(Mat4.translation(1, 0, 0, 1));
+            }
+        });
         this.new_line();
         this.key_triggered_button("Rotate left", ["j"], () => this.pc.pos = this.pc.pos.times(Mat4.rotation(0.1, 0, 1, 0)));
         this.key_triggered_button("Rotate right", ["l"], () => this.pc.pos = this.pc.pos.times(Mat4.rotation(0.1, 0, -1, 0)));
@@ -483,7 +511,7 @@ export class WeatheringHeights extends Scene {
                 }
             }
             else if (this.rain[i].is_puddle === true) {
-                const rain_transform = Mat4.translation(this.rain[i].pos[0], -1.4, this.rain[i].pos[1]).times(Mat4.scale(1, 0.1, 1));
+                const rain_transform = Mat4.translation(this.rain[i].pos[0], -1.4, this.rain[i].pos[1]).times(Mat4.scale(0.5, 0.1, 0.5));
                 this.shapes.rain_drop.draw(context, program_state, rain_transform, this.materials.water);
                 if (t > this.rain[i].time[1]) {
                     this.rain[i].is_puddle = false;
@@ -493,8 +521,11 @@ export class WeatheringHeights extends Scene {
                 if (t >= this.rain[i].time[1]) {
                     this.rain[i].falling = true;
                     this.rain[i].time[0] = t;
-                    this.rain[i].pos[0] = 80 * Math.random() - 40;
-                    this.rain[i].pos[1] = 80 * Math.random() - 40;
+                    this.rain[i].pos = [0, 0, 0];
+                    while (this.rain[i].pos[0] < 2 && this.rain[i].pos[0] > -2 && this.rain[i].pos[1] < 2.5 && this.rain[i].pos[1] > -2.5) {
+                        this.rain[i].pos[0] = 80 * Math.random() - 40;
+                        this.rain[i].pos[1] = 80 * Math.random() - 40;
+                    }
                 }
             }
         }
@@ -513,7 +544,7 @@ export class WeatheringHeights extends Scene {
                 }
             }
             else if (this.snow[i].is_puddle === true) {
-                const snow_transform = Mat4.translation(this.snow[i].pos[0], -1.42, this.snow[i].pos[1]).times(Mat4.scale(1, 0.1, 1));
+                const snow_transform = Mat4.translation(this.snow[i].pos[0], -1.42, this.snow[i].pos[1]).times(Mat4.scale(0.5, 0.1, 0.5));
                 this.shapes.snowflake.draw(context, program_state, snow_transform, this.materials.snow);
                 if (t > this.snow[i].time[1]) {
                     this.snow[i].is_puddle = false;
@@ -529,8 +560,17 @@ export class WeatheringHeights extends Scene {
             }
         }
     }
-    check_environment_collision() {
-
+    is_environment_collision(temp_pc_transform) {
+        const pc_point = temp_pc_transform.times(vec4(0, 0, 0, 1));
+        // check building collision
+        if (pc_point[0] < 4.05 && pc_point[0] > -4.05 && pc_point[2] < 5.15 && pc_point[2] > -5.15) {
+            return true;
+        }
+        // check map edge collision
+        if (pc_point[0] > 39.5 || pc_point[0] < -39.5 || pc_point[2] > 39.5 || pc_point[2] < -39.5) {
+            return true;
+        }
+        return false;
     }
 }
 
