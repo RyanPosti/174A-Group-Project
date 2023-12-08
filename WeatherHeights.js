@@ -158,8 +158,8 @@ export class WeatherHeights extends Scene {
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 100, 1), vec3(0, 0, 0), vec3(0, 1, 0));
         // Initial Position of the planets
-        this.sun_transform = Mat4.identity().times(Mat4.translation(20, 0, 0));
-        this.moon_transform = Mat4.identity().times(Mat4.translation(-20, 0, 0));
+        this.sun_transform = Mat4.identity().times(Mat4.translation(-20, 0, 0));
+        this.moon_transform = Mat4.identity().times(Mat4.translation(20, 0, 0));
 
         this.pc = {
             pos: Mat4.identity(),
