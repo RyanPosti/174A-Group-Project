@@ -158,8 +158,8 @@ export class WeatherHeights extends Scene {
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 100, 1), vec3(0, 0, 0), vec3(0, 1, 0));
         // Initial Position of the planets
-        this.sun_transform = Mat4.identity().times(Mat4.translation(10, 0, 0));
-        this.moon_transform = Mat4.identity().times(Mat4.translation(-10, 0, 0));
+        this.sun_transform = Mat4.identity().times(Mat4.translation(20, 0, 0));
+        this.moon_transform = Mat4.identity().times(Mat4.translation(-20, 0, 0));
 
         this.pc = {
             pos: Mat4.identity(),
@@ -290,24 +290,24 @@ export class WeatherHeights extends Scene {
 
         // Control of the Times
         this.new_line;
-        this.key_triggered_button("Sunrise", ["S"], () => {
-            this.sun_transform = Mat4.identity().times(Mat4.translation(-10, -5, 0));
-            this.moon_transform = Mat4.identity().times(Mat4.translation(10, 5, 0));
+        this.key_triggered_button("Sunrise", ["k"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(-20, -15, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(20, 15, 0));
         });
         this.new_line;
-        this.key_triggered_button("Noon", ["N"], () => {
-            this.sun_transform = Mat4.identity().times(Mat4.translation(0, 10, 0));
-            this.moon_transform = Mat4.identity().times(Mat4.translation(0, -10, 0));
+        this.key_triggered_button("Noon", ["n"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(0, 20, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(0, -20, 0));
         });
         this.new_line;
-        this.key_triggered_button("Sunset", ["E"], () => {
-            this.sun_transform = Mat4.identity().times(Mat4.translation(10, 5, 0));
-            this.moon_transform = Mat4.identity().times(Mat4.translation(-10, -5, 0));
+        this.key_triggered_button("Sunset", ["e"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(20, 15, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(-20, -15, 0));
         });
         this.new_line();
-        this.key_triggered_button("Midnight", ["M"], () => {
-            this.sun_transform = Mat4.identity().times(Mat4.translation(0, -10, 0));
-            this.moon_transform = Mat4.identity().times(Mat4.translation(0, 10, 0));
+        this.key_triggered_button("Midnight", ["m"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(0, -20, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(0, 20, 0));
         });
         this.new_line();
     }
