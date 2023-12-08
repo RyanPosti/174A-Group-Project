@@ -294,22 +294,22 @@ export class WeatherHeights extends Scene {
             this.sun_transform = Mat4.identity().times(Mat4.translation(-10, -5, 0));
             this.moon_transform = Mat4.identity().times(Mat4.translation(10, 5, 0));
         });
-            this.new_line;
-            this.key_triggered_button("Noon", ["N"], () => {
-                this.sun_transform = Mat4.identity().times(Mat4.translation(0, 10, 0));
-                this.moon_transform = Mat4.identity().times(Mat4.translation(0, -10, 0));
-            });
-            this.new_line;
-            this.key_triggered_button("Sunset", ["E"], () => {
-                this.sun_transform = Mat4.identity().times(Mat4.translation(10, 5, 0));
-                this.moon_transform = Mat4.identity().times(Mat4.translation(-10, -5, 0));
-            });
-            this.new_line();
-            this.key_triggered_button("Midnight", ["M"], () => {
-                this.sun_transform = Mat4.identity().times(Mat4.translation(0, -10, 0));
-                this.moon_transform = Mat4.identity().times(Mat4.translation(0, 10, 0));
-            });
-            this.new_line();
+        this.new_line;
+        this.key_triggered_button("Noon", ["N"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(0, 10, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(0, -10, 0));
+        });
+        this.new_line;
+        this.key_triggered_button("Sunset", ["E"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(10, 5, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(-10, -5, 0));
+        });
+        this.new_line();
+        this.key_triggered_button("Midnight", ["M"], () => {
+            this.sun_transform = Mat4.identity().times(Mat4.translation(0, -10, 0));
+            this.moon_transform = Mat4.identity().times(Mat4.translation(0, 10, 0));
+        });
+        this.new_line();
     }
 
     display(context, program_state) {
