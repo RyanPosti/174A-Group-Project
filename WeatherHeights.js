@@ -31,6 +31,7 @@ export class WeatherHeights extends Scene {
                 leg: new defs.Subdivision_Sphere(4),
             },
             snowflake: new defs.Subdivision_Sphere(4),
+            background: new defs.Cube(),
 
             // Building
             box_1: new Cube(),
@@ -125,46 +126,50 @@ export class WeatherHeights extends Scene {
             // Environment
             grass: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
-                ambient: 1,
+                ambient: 0.5, diffusivity: 1, specularity: 1,
                 texture: new Texture("assets/white_grass.png")
             }),
             water: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
-                ambient: 1,
+                ambient: 0.5, diffusivity: 1, specularity: 1,
                 texture: new Texture("assets/rain.jpg")
             }),
             test: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             snow: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
-                ambient: 1,
+                ambient: 0.5, diffusivity: 1, specularity: 1,
                 texture: new Texture("assets/snow.jpg")
             }),
+            day_bg: new Material(new defs.Phong_Shader(),
+                {ambient: 1, color: hex_color("#0000FF")}),
+            night_bg: new Material(new defs.Phong_Shader(),
+                {ambient: 1, color: hex_color("#000000")}),
             // Building
-            phong: new Material(new Textured_Phong(), {
+            phong: new Material(new defs.Phong_Shader(), {
                 color: hex_color("#ffffff"),
             }),
-            black: new Material(new Textured_Phong(), {
+            black: new Material(new defs.Phong_Shader(), {
                 color:hex_color("#000000")
             }),
-            green: new Material(new Textured_Phong(),{
+            green: new Material(new defs.Phong_Shader(),{
                 color: hex_color("#0b6623")
             }),
 
             Wood: new Material(new Textured_Phong(), {
                 color: hex_color("#cd7532"),
-                ambient: 0.25, diffusivity: 0.05, specularity: 1,
+                ambient: 0.1, diffusivity: 1, specularity: 1,
                 texture: new Texture("assets/wood.png")
             }),
 
             Gray_Wood:new Material(new Textured_Phong(),{
                 color: hex_color("#808080"),
-                ambient: 0.05, diffusivity: 1, specularity: 1,
+                ambient: 0.1, diffusivity: 1, specularity: 1,
                 textures: new Texture("assets/gray_wood.png")
             }),
             Glass: new Material (new Textured_Phong(), {
                 color: hex_color("#ffffff"),
-                ambient: 0.25, diffusivity: 1, specularity: 1,
+                ambient: 0.1, diffusivity: 1, specularity: 1,
                 textures: new Texture("assets/Glass.png")
             }),
             
@@ -376,10 +381,7 @@ export class WeatherHeights extends Scene {
 
         // Lighting
         //  - the parameters of the Light are: position, color, size
-        program_state.lights = [
-                                new Light(this.sun_transform.times(vec4(0.2, 0.2, 0.2, 0)), orange, 10 ** sunSize),
-                                new Light(this.moon_transform.times(vec4(0.2, 0.2, 0.2, 0)), white, 10 ** sunSize)
-                               ];
+        program_state.lights = [];
 
         // Sun                   
         let orbital_speed = 1;
@@ -390,8 +392,15 @@ export class WeatherHeights extends Scene {
         this.moon_transform = Mat4.rotation(orbital_speed/-200, 0, 0, 1).times(this.moon_transform);
         this.shapes.moon.draw(context, program_state, this.moon_transform, this.materials.moon);
         
+        if (this.is_daytime()) {
+            program_state.lights.push(new Light(this.sun_transform.times(vec4(0.2, 0.2, 0.2, 0)), white, 2));
+        }
+        else {
+            program_state.lights.push(new Light(this.moon_transform.times(vec4(0.2, 0.2, 0.2, 0)), white, 0.5));
+        }
+
         console.log(this.pc.leg.size);
-        if (this.pc.leg.size > 2.5) {
+        if (this.pc.leg.size > 10) {
             program_state.set_camera(this.initial_camera_location);
             const you_win_transform = Mat4.identity().times(Mat4.scale(1, 1, 1));
             this.shapes.game_over.draw(context, program_state, you_win_transform, this.materials.you_win);
@@ -601,7 +610,6 @@ export class WeatherHeights extends Scene {
         const river_transform = Mat4.identity().times(Mat4.translation(0, -1.51, 0)).times(Mat4.scale(140, 0.1, 140));
         this.shapes.ground.draw(context, program_state, grass_transform, this.materials.grass);
         this.shapes.ground.draw(context, program_state, river_transform, this.materials.water);
-
     }
 
     draw_pc(context, program_state) {
@@ -695,11 +703,11 @@ export class WeatherHeights extends Scene {
         for (let i = 0; i < this.snow.length; i++) {
             if (this.snow[i].is_puddle) {
                 if (pc_point[0] < (this.snow[i].pos[0] + 0.25 + 0.05 * this.pc.leg.size) && pc_point[0] > (this.snow[i].pos[0] - 0.25 - 0.05 * this.pc.leg.size) && pc_point[2] < (this.snow[i].pos[1] + 0.25 + 0.05 * this.pc.leg.size) && pc_point[2] > (this.snow[i].pos[1] - 0.25 - 0.05 * this.pc.leg.size)) {
-                    this.pc.head.size *= 1.05
-                    this.pc.head.y_d *= 1.05
-                    this.pc.body.size *= 1.05
-                    this.pc.body.y_d *= 1.05
-                    this.pc.leg.size *= 1.05
+                    this.pc.head.size *= 1.15
+                    this.pc.head.y_d *= 1.15
+                    this.pc.body.size *= 1.15
+                    this.pc.body.y_d *= 1.15
+                    this.pc.leg.size *= 1.15
                     this.pc.leg.y_d *= 1.15
                     this.snow[i].is_puddle = false;
                 }
@@ -722,5 +730,11 @@ export class WeatherHeights extends Scene {
             }
         }
     }
+    is_daytime() {
+        const sun_point = (this.sun_transform).times(vec4(0, 0, 0, 1));
+        if (sun_point[1] > 0) {
+            return true;
+        } 
+        return false;
+    }
 }
-
