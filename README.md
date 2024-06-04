@@ -1,5 +1,5 @@
 # 174A-Group-Project-Weathering-Heights
-By: Yun Ting Hou, Kelvin Jiang, and Ryan Posti
+By: Yu-Ting Hou, Kelvin Jiang, and Ryan Posti
 
 The animation is a game of a snowman in front of a contemporary home collecting snow to grow in size until eventually it wins, but there are also puddles that 
 reduce the size of the snowman. The game also has a changing day and night cycle where the sun and moon move across the sky with differing light intensity. 
